@@ -1,0 +1,308 @@
+---
+title: "Stat 300 Project"
+author: "Nick Hauenstein"
+date: "3/31/2026"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Test/Train Split Setup
+
+```{r}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+carseat <- read.csv("C:/Users/nickh/Downloads/carseat.csv")
+
+set.seed(995409786)
+
+trainRec<-sort(sample(1:nrow(carseat),size=400))
+testRec<-setdiff(1:nrow(carseat),trainRec)
+
+trainSeat<-carseat[trainRec,]
+testSeat<-carseat[testRec,]
+```
+
+## Choosing prediction Variable
+
+In order to choose which variable is a possible effective predictor I chose to look at graphs of the variables that could possibly explain price. Having all these graphs and being able to compare them can help give an idea of one or possibly a few that I want to explore and look into just by looking at the results. 
+```{r}
+model_Income <- lm(Sales~Income, data = trainSeat)
+r2_Income <- summary(model_Income)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Income, y= Sales))+
+  geom_point()+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Income),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Income, 3)),hjust=0)+
+  labs(title= "Car seat sales based on median income of the community",
+       x="Median Income (in 1000s)",
+       y="Sales (in 1000s)")
+
+model_Price <- lm(Sales~Price, data = trainSeat)
+r2_Price <- summary(model_Price)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Price, y= Sales))+
+  geom_point(color="red")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Price),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Price, 3)),hjust=0)+
+  labs(title= "Car seat sales based on Prices",
+       x="Price (in 1000s)",
+       y="Sales (in 1000s)")
+
+model_Ad <- lm(Sales~Advertising, data = trainSeat)
+r2_Ad <- summary(model_Ad)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Advertising, y= Sales))+
+  geom_point(color="orange")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Advertising),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Ad, 3)),hjust=0)+
+  labs(title= "Car seat sales based on money spent on advertising",
+       x="Advertising (in 1000s)",
+       y="Sales (in 1000s)")
+
+model_CompPrice <- lm(Sales ~ CompPrice, data = trainSeat)
+r2_CompPrice <- summary(model_CompPrice)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=CompPrice, y= Sales))+
+  geom_point(color="green")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$CompPrice),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_CompPrice, 3)),hjust=0)+
+  labs(title= "Car seat sales based on competition prices",
+       x="Comp Price (in 1000s)",
+       y="Sales (in 1000s)")
+
+model_Age <- lm(Sales~Age, data = trainSeat)
+r2_Age <- summary(model_Age)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Age, y= Sales))+
+  geom_point(color="brown")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Age),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Age, 3)),hjust=0)+
+  labs(title= "Car seat sales based on average age",
+       x="Age",
+       y="Sales (in 1000s)")
+
+model_Accidents <- lm(Sales~Accidents, data = trainSeat)
+r2_Accidents <- summary(model_Accidents)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Accidents, y= Sales))+
+  geom_point(color="purple")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Accidents),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Accidents, 3)),hjust=0)+
+  labs(title= "Car seat sales based on number of accidents",
+       x="Accidents",
+       y="Sales (in 1000s)")
+
+model_Education <- lm(Sales~Education, data = trainSeat)
+r2_Education <- summary(model_Education)$r.squared
+ggplot(data=trainSeat,
+       mapping = aes(x=Education, y= Sales))+
+  geom_point(color="pink")+
+  geom_smooth(method=lm,se=FALSE)+
+  annotate(
+    "text",
+    x = min(trainSeat$Education),
+    y = max(trainSeat$Sales),
+    label = paste("R^2 =", round(r2_Education, 3)),hjust=0)+
+  labs(title= "Car seat sales based on education level",
+       x="Education level",
+       y="Sales (in 1000s)")
+```
+
+By looking at the graphs it seems that their is two competitors for possible variables. The graphs using price and competition price are the two that show any kind of linear relationship when used to predict sales. We need to further investigate these variables so lets take a look at them together to see if any of them have relationships with each other.
+
+```{r}
+par(cex = 0.6,      
+    mar = c(2,2,2,2))  
+plot(carseat)
+library(corrplot) 
+carseatCorMat <- cor(carseat[sapply(carseat, is.numeric)], method = "pearson")
+corrplot(carseatCorMat, method = "number")
+```
+
+
+Looking at the heat map and plots of all the variables it does appear that Price and CompPrice are the best predictors for sales considering their stronger relationships. It also seems that Income and Education have a relationship between themselves.
+
+## What about categorical variables
+
+While this heat map is great for us to use its missing a possibly key variable and that is ShelveLoc. Since this is missing lets take a look at the relationship by using boxplots. 
+
+```{r}
+trainSeat$ShelveLoc <- factor(trainSeat$ShelveLoc,
+                              levels = c("Bad","Medium","Good"))
+ggplot(data = trainSeat, aes(x = ShelveLoc, y = Sales)) +
+  geom_boxplot() +
+  labs(
+    title = "Sales by Shelf Location",
+    x = "Shelf Location",
+    y = "Sales"
+  ) +
+  theme_minimal()
+```
+
+This graph makes a lot of since. It shows us that there is a positive relationship between the location and sales considering bad<medium<good. Knowing this we should definetely include this variable in our model. 
+
+
+## Model selection process
+
+Now that we have seen all the relationships with the variables lets use BIC to get our model. But before doing that lets take a look at the full model and this way we can see how much our best model improves.
+
+```{r}
+full_model <- lm(Sales ~ ., data = trainSeat)
+summary(full_model)
+```
+
+This model does have a good R^2 at 0.8958 but there are a handful of not significant predictors in here. Lets see what using BIC gives us. 
+
+```{r}
+n <- nrow(trainSeat)
+BIC_model <- step(full_model,direction = "both", k = log(n))
+summary(BIC_model)
+```
+
+To really see if we have the best model lets try again but using AIC and seeing if our model changes.
+
+```{r}
+n <- nrow(trainSeat)
+AIC_model <- step(full_model,direction = "both")
+summary(AIC_model)
+```
+
+The AIC model seems to have added the accidents as a predictor and this has resulted in a tiny increase in R^2. Seeing this its very hard to decide which model might be better so the thing that matters most here now between choosing the two will have to be the assumptions. Lets have a look at the assumptions for the BIC model and then the AIC model. 
+
+```{r}
+#Standardized residual plot 
+#rstandard() function calculate the standardized residuals
+BICStdResid<-rstandard(BIC_model)
+BICFitted<-BIC_model$fitted #Extract the y_ihats
+plot(BICFitted,BICStdResid, pch=16,col="red")
+abline(h=0)
+
+#Histogram of the standardized residuals
+hist(BICStdResid,col='red', xlab="Standardized Residuals",ylab="Frequency ")
+
+# QQ plot of the standardized residual
+qqnorm(BICStdResid, pch=16)
+qqline(BICStdResid)
+```
+
+```{r}
+#Standardized residual plot 
+#rstandard() function calculate the standardized residuals
+AICStdResid<-rstandard(AIC_model)
+AICFitted<-AIC_model$fitted #Extract the y_ihats
+plot(AICFitted,AICStdResid, pch=16,col="green")
+abline(h=0)
+
+#Histogram of the standardized residuals
+hist(AICStdResid,col='lightgreen', xlab="Standardized Residuals",ylab="Frequency ")
+
+# QQ plot of the standardized residual
+qqnorm(AICStdResid, pch=16)
+qqline(AICStdResid)
+```
+
+WOW! Both of these models are practically perfect. Looking at the graphs they both meet all the assumptions. The error variance is constant for both, both have normal distribution for errors, the relationship is linear from previous graphs, and the sampling and meaning of the variables meet independence assumption.
+
+Another big thing that does in fact need to be checked for is multicolinearity. If we take a look at the VIF for the variables in both models we can see if theres any variables that might give an issue on colinearity. Since the models only difference is accidents what we will mainly be testing is to see if adding it causes any issue. 
+
+```{r}
+library(car)
+vif(BIC_model)
+vif(AIC_model)
+```
+
+Both of these models appear to have no issues with multicollinearity so they are both useable. 
+
+There is one final thing that can be checked to compare the models and possibly help make a decision and that is looking at the RMSE. By looking at the RMSE of the models we can see what the lowest RMSE and if its significantly different than we definitely want to use that one. 
+
+```{r}
+mean_sales <- mean(trainSeat$Sales)
+pred_naive <- rep(mean_sales, nrow(trainSeat))
+
+rmse <- sqrt(mean((trainSeat$Sales - pred_naive)^2))
+rmse
+
+pred_aic <- predict(AIC_model, newdata = testSeat)
+
+rmse_aic <- sqrt(mean((testSeat$Sales - pred_aic)^2))
+rmse_aic
+
+pred_bic <- predict(BIC_model, newdata = testSeat)
+
+rmse_bic <- sqrt(mean((testSeat$Sales - pred_bic)^2))
+rmse_bic
+
+```
+
+The rmse of both these models are nearly identical so testing them with the test set shows that they are both strong models to use for prediction. Because they are so close to each other my final model choice will be the BIC model since it has one less predictor making it simpler. So the final model will be:
+
+```{r}
+summary(BIC_model)
+```
+
+
+$$\hat{Sales}=22.172-0.078(Price)+0.0066(Income)+0.107(Advertising)+3.017(ShelveLocMedium)+8.996(ShelveLocGood$$
+
+So after all the plotting and comparisons we finally have our predictors. The variables that can be used to help predict sales will be price, income, advertising, and shelve location. To predict sale we can use the given equation and simply plug in the number of each variable (for shelve location we have bad as the reference and will have to plug in either 1 or 0 for medium and large). 
+
+## Strength of model
+
+Now that we finally have our model lets show the predictive ability of it using the testing set. 
+
+```{r}
+rmse_bic <- sqrt(mean((testSeat$Sales - pred_bic)^2))
+rmse_bic
+
+test_resid <- testSeat$Sales - pred_bic
+
+plot(pred_bic, test_resid,
+     xlab = "Predicted Sales",
+     ylab = "Residuals",
+     main = "Residuals vs Predicted (Test Set)",
+     pch = 16, col = "darkgreen")
+
+abline(h = 0, col = "red")
+
+plot(testSeat$Sales, pred_bic,
+     pch = 16, col = "blue",
+     xlab = "Actual Sales",
+     ylab = "Predicted Sales",
+     main = "Model Prediction Accuracy")
+
+abline(0, 1, col = "red", lwd = 2)
+
+abs_error <- abs(test_resid)
+
+boxplot(abs_error,
+        main = "Absolute Prediction Errors",
+        ylab = "Absolute Error")
+```
+
+In addition to RMSE, the model’s predictive performance was evaluated visually using multiple approaches. The residuals vs predicted sales show a good variance having it being constant. A scatterplot of predicted versus actual values shows strong alignment along the 45-degree line, demonstrating good predictive accuracy. A boxplot of the absolute value of the errors show the spread and variability of the errors. There appears to be one slight outlier with a slightly right skewed distribution but nothing too concerning. 
+
